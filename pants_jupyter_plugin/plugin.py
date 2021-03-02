@@ -109,7 +109,9 @@ class _PexEnvironmentBootstrapper(Magics):
   def _extract_resulting_binary(self, build_dir: pathlib.PosixPath, extension: str) -> pathlib.PosixPath:
     """Extracts exactly 1 binary from a dir and returns a Path."""
     assert build_dir.is_dir(), f'build_dir {build_dir} was not a dir!'
-    binaries = list(build_dir.glob(f'*.{extension}'))
+    # N.B. It's important we use pathlib.Path.rglob (recursive) here, since pants v2 prefixes dist dirs
+    # with their address namespace.
+    binaries = list(build_dir.rglob(f'*.{extension}'))
     if len(binaries) != 1:
       raise self.BuildFailure(
         'failed to select deterministic build artifact from workdir, needed 1 binary file with '
@@ -287,14 +289,20 @@ class _PexEnvironmentBootstrapper(Magics):
     extension: str
   ) -> pathlib.PosixPath:
     """Runs pants with widget UI display."""
-    # Version check: in pants v1, we use `./pants binary` - in v2 `./pants package`.
-    goal_name = 'binary' if pants_repo.joinpath('pants.ini').exists() else 'package'
 
-    # N.B. pants v2 doesn't support --pants-distdir outside of the build root.
-    dist_dir = pants_repo.joinpath('dist')
-    dist_dir.mkdir(exist_ok=True)
+    # Version check for pants v1 vs v2 flags/behavior.
+    is_pants_v1 = pants_repo.joinpath('pants.ini').exists()
+    if is_pants_v1:
+      goal_name = 'binary'
+      tmp_root = None
+    else:
+      goal_name = 'package'
+      # N.B. pants v2 doesn't support `--pants-distdir` outside of the build root.
+      tmp_root = pants_repo.joinpath('dist')
+      # N.B. The dist dir must exist for temporary_dir.
+      tmp_root.mkdir(exist_ok=True)
 
-    with temporary_dir(root_dir=str(dist_dir), cleanup=False) as tmp_dir:
+    with temporary_dir(root_dir=tmp_root, cleanup=False) as tmp_dir:
       tmp_path = pathlib.PosixPath(tmp_dir)
       title = f'[Build] ./pants {goal_name} {pants_target}'
       cmd = f'cd {pants_repo} && ./pants --pants-distdir="{tmp_path}" {goal_name} {pants_target}'

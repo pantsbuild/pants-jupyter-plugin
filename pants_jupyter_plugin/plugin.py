@@ -144,14 +144,15 @@ class _PexEnvironmentBootstrapper(Magics):
     const observer = new MutationObserver(callback);
     if (document.querySelector(".%s")) {
       addObserver();
-    }
-    else {
+    } else {
       // Add a small delay in case the element is not available on the DOM yet
       window.setTimeout(addObserver, 100);
     }
     ''' % (unique_class, unique_class, unique_class)
 
-    terminalStyling = '<style>.%s { background-color: black;} .%s pre { color: white; }</style>' % (unique_class, unique_class)
+    terminalStyling = (
+      '<style>.%s { background-color: black;} .%s pre { color: white; }</style>'
+    ) % (unique_class, unique_class)
 
     def set_output_glyph(glyph):
       folder.set_title(0, f'{glyph} {title}')

@@ -14,3 +14,4 @@
 .cache/*
 .eggs/*
 /.pytest_cache
+.ipynb_checkpoints/

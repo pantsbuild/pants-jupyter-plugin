@@ -54,7 +54,7 @@ def _scrub_import_environment(sys_modules_whitelist: typing.List[str], logger: t
 
       if hasattr(m, '__file__') and m.__file__ is not None:
         mp = pathlib.Path(m.__file__)
-        if pex_root in mp.parents or kernel_root in mp.parents:
+        if pex_root in mp.parents:
           yield k
 
   def scrub_env():
@@ -279,7 +279,7 @@ class _PexEnvironmentBootstrapper(Magics):
       title = f'[Resolve] {requirements}'
       safe_requirements = ' '.join(shlex.quote(r) for r in shlex.split(requirements))
       # TODO: Add support for toggling `--no-pypi` and find-links/index configs.
-      cmd = f'pex -vv -o {output_pex}" {safe_requirements}'
+      cmd = f'pex -vv -o "{output_pex}" {safe_requirements}'
       return self._stream_binary_build_with_output(cmd, title, tmp_path, extension='pex')
 
   def _run_pants(

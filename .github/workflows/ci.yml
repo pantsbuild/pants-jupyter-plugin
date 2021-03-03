@@ -1,0 +1,66 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  checks:
+    name: TOXENV=${{ matrix.tox-env }}
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - check-name: Formatting
+            python-version: 3.9
+            tox-env: fmt
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Check ${{ matrix.check-name }}
+        uses: ./.github/actions/run-tox
+        with:
+          tox-env: ${{ matrix.tox-env }}
+  cpython-unit-tests:
+    name: (${{ matrix.os }}) TOXENV=py${{ join(matrix.python-version, '') }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: [[3, 6], [3, 7], [3, 8], [3, 9]]
+        os: [ubuntu-20.04, macos-10.15]
+        exclude:
+          - os: macos-10.15
+            python-version: [3, 6]
+          - os: macos-10.15
+            python-version: [3, 7]
+          - os: macos-10.15
+            python-version: [3, 8]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Python ${{ join(matrix.python-version, '.') }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: "${{ join(matrix.python-version, '.') }}"
+      - name: Run Unit Tests
+        uses: ./.github/actions/run-tox
+        with:
+          tox-env: py${{ join(matrix.python-version, '') }}
+  pypy-unit-tests:
+    name: (PyPy ${{ join(matrix.pypy-version, '.') }}) TOXENV=pypy${{ matrix.pypy-version[0] }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        pypy-version: [[3, 6]]
+        os: [ubuntu-20.04, macos-10.15]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup PyPy ${{ join(matrix.pypy-version, '.') }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: "pypy-${{ join(matrix.pypy-version, '.') }}"
+      - name: Run Unit Tests
+        uses: ./.github/actions/run-tox
+        with:
+          tox-env: pypy${{ matrix.pypy-version[0] }}

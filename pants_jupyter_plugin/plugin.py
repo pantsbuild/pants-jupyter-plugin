@@ -387,20 +387,16 @@ class _PexEnvironmentBootstrapper(Magics):
       return
 
     # Version check for pants v1 vs v2 flags/behavior.
-    with temporary_dir() as tmp_dir:
-      stderr_path = pathlib.Path(tmp_dir) / 'stderr'
-      try:
-        with open(stderr_path, 'w') as stderr:
-          version_string = subprocess.check_output(
-            ['./pants', '--version'],
-            stdin=subprocess.DEVNULL,
-            stderr=stderr,
-            cwd=pants_repo,
-          ).decode().strip()
-      except:
-        if stderr_path.is_file():
-          print(f"`pants --version` failed with:\n{stderr_path.read_text()}", file=sys.stderr)
-        raise
+    version_process = subprocess.run(
+      ['./pants', '--version'],
+      stdin=subprocess.DEVNULL,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
+      cwd=pants_repo,
+    )
+    if version_process.returncode != 0:
+      raise self.SubprocessFailure(f"`pants --version` failed with:\n{version_process.stderr}", file=sys.stderr)
+    version_string = version_process.stdout.decode().strip()
     is_pants_v2 = version_string.startswith("2")
 
     self._display_line(f'Using pants {version_string} in repo at: {pants_repo}\n')

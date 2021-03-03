@@ -1,0 +1,17 @@
+*~
+*.pyc
+*.egg-info
+/.cache
+/venv
+/build/*
+/dist/*
+/docs/_build
+/.tox
+/.idea
+/.coverage*
+/htmlcov
+/.pyenv_test
+.cache/*
+.eggs/*
+/.pytest_cache
+.ipynb_checkpoints/

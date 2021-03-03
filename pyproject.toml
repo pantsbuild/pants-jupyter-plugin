@@ -1,0 +1,47 @@
+[build-system]
+requires = ["flit_core >=3,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+dist-name = "pants-jupyter-plugin"
+module = "pants_jupyter_plugin"
+author = "The Pants developers"
+author-email = "pantsbuild@gmail.com"
+home-page = "https://github.com/pantsbuild/pants-jupyter-plugin"
+description-file = "README.md"
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Framework :: IPython",
+]
+requires-python = ">=3.6,<3.10"
+requires = [
+  "dataclasses==0.8; python_version == '3.6'",
+  "ipython==7.16.1",
+  "ipywidgets==7.6.3",
+  "nest_asyncio==1.5.1",
+  "pex==2.1.32",
+  "twitter.common.contextutil==0.3.11",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py36"]
+exclude = '''
+/(
+  | \.git
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100

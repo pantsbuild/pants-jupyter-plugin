@@ -4,8 +4,6 @@
 from contextlib import contextmanager
 import asyncio
 import itertools
-import functools
-import os
 import pathlib
 import random
 import shlex

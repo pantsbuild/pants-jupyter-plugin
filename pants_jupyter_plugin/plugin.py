@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 import asyncio
 import itertools
 import pathlib
@@ -82,6 +83,12 @@ def _scrub_import_environment(sys_modules_whitelist: typing.List[str], logger: t
   )
 
 
+@dataclass(frozen=True)
+class _PantsRepo:
+    path: pathlib.Path
+    is_pants_v2: bool
+
+
 @magics_class
 class _PexEnvironmentBootstrapper(Magics):
   """A Magics subclass that provides pants and pex ipython magics."""
@@ -102,7 +109,7 @@ class _PexEnvironmentBootstrapper(Magics):
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self._pants_repo = None
+    self._pants_repo: typing.Optional[PantsRepo] = None
 
   def _display_line(self, msg: str):
     print(msg, end='', flush=True)
@@ -285,28 +292,26 @@ class _PexEnvironmentBootstrapper(Magics):
 
   def _run_pants(
     self,
-    pants_repo: pathlib.PosixPath,
+    pants_repo: _PantsRepo,
     pants_target: str,
     extension: str
   ) -> pathlib.PosixPath:
     """Runs pants with widget UI display."""
 
-    # Version check for pants v1 vs v2 flags/behavior.
-    is_pants_v1 = pants_repo.joinpath('pants.ini').exists()
-    if is_pants_v1:
-      goal_name = 'binary'
-      tmp_root = None
-    else:
+    if pants_repo.is_pants_v2:
       goal_name = 'package'
       # N.B. pants v2 doesn't support `--pants-distdir` outside of the build root.
-      tmp_root = pants_repo.joinpath('dist')
+      tmp_root = pants_repo.path.joinpath('dist')
       # N.B. The dist dir must exist for temporary_dir.
       tmp_root.mkdir(exist_ok=True)
+    else:
+      goal_name = 'binary'
+      tmp_root = None
 
     with temporary_dir(root_dir=tmp_root, cleanup=False) as tmp_dir:
       tmp_path = pathlib.PosixPath(tmp_dir)
       title = f'[Build] ./pants {goal_name} {pants_target}'
-      cmd = f'cd {pants_repo} && ./pants --pants-distdir="{tmp_path}" {goal_name} {pants_target}'
+      cmd = f'cd {pants_repo.path} && ./pants --pants-distdir="{tmp_path}" {goal_name} {pants_target}'
       return self._stream_binary_build_with_output(cmd, title, tmp_path, extension=extension)
 
   def _bootstrap_pex(self, pex_path: pathlib.PosixPath):
@@ -360,7 +365,7 @@ class _PexEnvironmentBootstrapper(Magics):
 
     self._bootstrap_pex(bootstrap_pex_path)
 
-  def _validate_pants_repo(self, pants_repo: pathlib.PosixPath) -> bool:
+  def _validate_pants_repo(self, pants_repo: pathlib.Path) -> bool:
     """Validates a given or stored path is a valid pants repo."""
     return (
       pants_repo and
@@ -382,7 +387,11 @@ class _PexEnvironmentBootstrapper(Magics):
       return
 
     self._display_line(f'Using pants repo at: {pants_repo}\n')
-    self._pants_repo = pants_repo.absolute()
+
+    # Version check for pants v1 vs v2 flags/behavior.
+    pants_repo = pants_repo.absolute()
+    is_pants_v2 = pants_repo.joinpath('pants.toml').exists()
+    self._pants_repo = _PantsRepo(pants_repo, is_pants_v2)
 
   @line_magic
   def pants_load(self, pants_target: str):
@@ -392,7 +401,7 @@ class _PexEnvironmentBootstrapper(Magics):
       self._display_line('Usage: %pants_load <pants target>\n')
       return
 
-    if not self._validate_pants_repo(self._pants_repo):
+    if not self._validate_pants_repo(self._pants_repo.path):
       self._display_line('ERROR: could not find a valid pants repo. did you run %pants_repo <path to repo>?\n')
       return
 

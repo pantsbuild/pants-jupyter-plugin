@@ -8,8 +8,8 @@ import itertools
 import pathlib
 import random
 import shlex
-import shutil
 import string
+import subprocess
 import sys
 import typing
 
@@ -386,11 +386,25 @@ class _PexEnvironmentBootstrapper(Magics):
       self._display_line(f'ERROR: could not find a valid pants repo at {pants_repo}\n')
       return
 
-    self._display_line(f'Using pants repo at: {pants_repo}\n')
-
     # Version check for pants v1 vs v2 flags/behavior.
+    with temporary_dir() as tmp_dir:
+      stderr_path = pathlib.Path(tmp_dir) / 'stderr'
+      try:
+        with open(stderr_path, 'w') as stderr:
+          version_string = subprocess.check_output(
+            ['./pants', '--version'],
+            stdin=subprocess.DEVNULL,
+            stderr=stderr,
+            cwd=pants_repo,
+          ).decode().strip()
+      except:
+        if stderr_path.is_file():
+          print(f"`pants --version` failed with:\n{stderr_path.read_text()}", file=sys.stderr)
+        raise
+    is_pants_v2 = version_string.startswith("2")
+
+    self._display_line(f'Using pants {version_string} in repo at: {pants_repo}\n')
     pants_repo = pants_repo.absolute()
-    is_pants_v2 = pants_repo.joinpath('pants.toml').exists()
     self._pants_repo = _PantsRepo(pants_repo, is_pants_v2)
 
   @line_magic

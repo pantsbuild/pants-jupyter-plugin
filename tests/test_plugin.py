@@ -28,3 +28,29 @@ def test_pex_load(tmpdir) -> None:
         ],
         check=True,
     )
+
+
+def test_requirements_load() -> None:
+    subprocess.run(
+        [
+            "ipython",
+            "-c",
+            dedent(
+                f"""\
+                try:
+                    import colors
+                    raise AssertionError(
+                        "Should not have been able to import colors before loading requirements."
+                    )
+                except ImportError:
+                    # Expected.
+                    pass
+
+                %load_ext pants_jupyter_plugin
+                %requirements_load "ansicolors==1.1.8"
+                import colors
+                """
+            ),
+        ],
+        check=True,
+    )

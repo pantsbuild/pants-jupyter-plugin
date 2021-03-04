@@ -30,8 +30,6 @@ jobs:
         os: [ubuntu-20.04, macos-10.15]
         exclude:
           - os: macos-10.15
-            python-version: [3, 6]
-          - os: macos-10.15
             python-version: [3, 7]
           - os: macos-10.15
             python-version: [3, 8]
@@ -45,9 +43,9 @@ jobs:
       - name: Run Unit Tests
         uses: ./.github/actions/run-tox
         with:
-          tox-env: py${{ join(matrix.python-version, '') }}
+          tox-env: py${{ join(matrix.python-version, '') }} -- -n auto -vvs
   pypy-unit-tests:
-    name: (PyPy ${{ join(matrix.pypy-version, '.') }}) TOXENV=pypy${{ matrix.pypy-version[0] }}
+    name: (${{ matrix.os }} PyPy ${{ join(matrix.pypy-version, '.') }}) TOXENV=pypy${{ matrix.pypy-version[0] }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -63,4 +61,4 @@ jobs:
       - name: Run Unit Tests
         uses: ./.github/actions/run-tox
         with:
-          tox-env: pypy${{ matrix.pypy-version[0] }}
+          tox-env: pypy${{ matrix.pypy-version[0] }} -- -n auto -vvs

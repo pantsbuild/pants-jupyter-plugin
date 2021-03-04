@@ -70,9 +70,9 @@ def check_pants_load(pants_repo: PantsRepo, pex_target: str, expected_module: st
             dedent(
                 f"""\
                 try:
-                    import colors
+                    import {expected_module}
                     raise AssertionError(
-                        "Should not have been able to import colors before loading via "
+                        "Should not have been able to import {expected_module} before loading via "
                         "{pants_repo.pants}."
                     )
                 except ImportError:

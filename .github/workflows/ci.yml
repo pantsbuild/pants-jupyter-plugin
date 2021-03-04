@@ -47,7 +47,7 @@ jobs:
         with:
           tox-env: py${{ join(matrix.python-version, '') }} -- -n auto
   pypy-unit-tests:
-    name: ((${{ matrix.os }}) PyPy ${{ join(matrix.pypy-version, '.') }}) TOXENV=pypy${{ matrix.pypy-version[0] }}
+    name: (${{ matrix.os }} PyPy ${{ join(matrix.pypy-version, '.') }}) TOXENV=pypy${{ matrix.pypy-version[0] }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

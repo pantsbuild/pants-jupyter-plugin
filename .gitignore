@@ -15,3 +15,4 @@
 .eggs/*
 /.pytest_cache
 .ipynb_checkpoints/
+/.pants_versions/

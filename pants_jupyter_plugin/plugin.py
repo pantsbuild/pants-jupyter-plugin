@@ -108,7 +108,7 @@ class _PexEnvironmentBootstrapper(Magics):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._pants_repo: typing.Optional[PantsRepo] = None
+        self._pants_repo: typing.Optional[_PantsRepo] = None
 
     def _display_line(self, msg: str):
         print(msg, end="", flush=True)
@@ -118,13 +118,14 @@ class _PexEnvironmentBootstrapper(Magics):
     ) -> pathlib.PosixPath:
         """Extracts exactly 1 binary from a dir and returns a Path."""
         assert build_dir.is_dir(), f"build_dir {build_dir} was not a dir!"
-        # N.B. It's important we use pathlib.Path.rglob (recursive) here, since pants v2 prefixes dist dirs
-        # with their address namespace.
+        # N.B. It's important we use pathlib.Path.rglob (recursive) here, since pants v2 prefixes
+        # dist dirs with their address namespace.
         binaries = list(build_dir.rglob(f"*.{extension}"))
         if len(binaries) != 1:
             raise self.BuildFailure(
-                "failed to select deterministic build artifact from workdir, needed 1 binary file with "
-                f"extension {extension} but found {len(binaries)}. Is the BUILD target a binary (pex) output type?"
+                "failed to select deterministic build artifact from workdir, needed 1 binary file "
+                f"with extension {extension} but found {len(binaries)}. Is the BUILD target a "
+                "binary (pex) output type?"
             )
         return binaries[0]
 
@@ -303,7 +304,10 @@ class _PexEnvironmentBootstrapper(Magics):
         with temporary_dir(root_dir=tmp_root, cleanup=False) as tmp_dir:
             tmp_path = pathlib.PosixPath(tmp_dir)
             title = f"[Build] ./pants {goal_name} {pants_target}"
-            cmd = f'cd {pants_repo.path} && ./pants --pants-distdir="{tmp_path}" {goal_name} {pants_target}'
+            cmd = (
+                f'cd {pants_repo.path} && ./pants --pants-distdir="{tmp_path}" {goal_name} '
+                f"{pants_target}"
+            )
             return self._stream_binary_build_with_output(cmd, title, tmp_path, extension=extension)
 
     def _bootstrap_pex(self, pex_path: pathlib.PosixPath):
@@ -386,7 +390,8 @@ class _PexEnvironmentBootstrapper(Magics):
         )
         if version_process.returncode != 0:
             raise self.SubprocessFailure(
-                f"`pants --version` failed with:\n{version_process.stderr}", file=sys.stderr
+                f"`pants --version` failed with:\n{version_process.stderr}",
+                return_code=version_process.returncode,
             )
         version_string = version_process.stdout.decode().strip()
         is_pants_v2 = version_string.startswith("2")
@@ -405,7 +410,8 @@ class _PexEnvironmentBootstrapper(Magics):
 
         if not self._validate_pants_repo(self._pants_repo.path):
             self._display_line(
-                "ERROR: could not find a valid pants repo. did you run %pants_repo <path to repo>?\n"
+                "ERROR: could not find a valid pants repo. did you run %pants_repo "
+                "<path to repo>?\n"
             )
             return
 

@@ -2,13 +2,14 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 import subprocess
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
 from conftest import IS_PYPY, PantsRepo
 
 
-def test_pex_load(tmpdir) -> None:
+def test_pex_load(tmpdir: Path) -> None:
     pex_file = tmpdir / "colors.pex"
     subprocess.run(["pex", "ansicolors==1.1.8", "-o", pex_file], check=True)
     subprocess.run(

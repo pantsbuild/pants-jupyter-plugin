@@ -18,12 +18,5 @@ runs:
         done
         echo "::endgroup::"
 
-        echo "::group::Exposing PyPys"
-        for pypy_bin_dir in ${toolcache}/PyPy/*/x64/bin; do
-          echo "Exposing ${pypy_bin_dir}: $(${pypy_bin_dir}/pypy --version)"
-          PATH="${PATH}:${pypy_bin_dir}"
-        done
-        echo "::endgroup::"
-
         echo "PATH=${PATH}" >> $GITHUB_ENV
       shell: bash

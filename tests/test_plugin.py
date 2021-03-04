@@ -6,7 +6,7 @@ from pathlib import Path
 from textwrap import dedent
 
 import pytest
-from conftest import IS_PYPY, PantsRepo
+from conftest import PantsRepo
 
 
 def test_pex_load(tmpdir: Path) -> None:
@@ -91,7 +91,6 @@ def check_pants_load(pants_repo: PantsRepo, pex_target: str, expected_module: st
     )
 
 
-@pytest.mark.skipif(IS_PYPY, reason="Pants needs CPython")
 def test_pants_v1_load(pants_v1_repo: PantsRepo) -> None:
     build_root = pants_v1_repo.build_root
 
@@ -117,7 +116,6 @@ def test_pants_v1_load(pants_v1_repo: PantsRepo) -> None:
     )
 
 
-@pytest.mark.skipif(IS_PYPY, reason="Pants needs CPython")
 def test_pants_v2_load(pants_v2_repo: PantsRepo) -> None:
     build_root = pants_v2_repo.build_root
 

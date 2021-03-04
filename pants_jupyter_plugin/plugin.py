@@ -9,9 +9,9 @@ import shlex
 import string
 import subprocess
 import sys
-import typing
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Any, Awaitable, Callable, Container, Iterable, Iterator, Optional, Tuple
 
 import ipywidgets
 import nest_asyncio
@@ -21,14 +21,16 @@ from pex.pex_bootstrapper import bootstrap_pex_env
 from pex.variables import Variables
 
 # TODO: replace or vendor these.
-from twitter.common.contextutil import environment_as, pushd, temporary_dir
+from twitter.common.contextutil import environment_as, temporary_dir
 
 FAIL_GLYPH = "✗"
 SUCCESS_GLYPH = "✓"
 SPINNER_SEQ = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 
 
-def _scrub_import_environment(sys_modules_whitelist: typing.List[str], logger: typing.Callable):
+def _scrub_import_environment(
+    sys_modules_whitelist: Container[str], logger: Callable[[str], None]
+) -> None:
     """Scrubs sys.path and sys.modules to a raw state.
 
     WARNING: This will irreversably mutate sys.path and sys.modules each time it's called.
@@ -36,7 +38,7 @@ def _scrub_import_environment(sys_modules_whitelist: typing.List[str], logger: t
     pex_root = pathlib.Path(Variables().PEX_ROOT)
 
     # A generator that emits sys.path elements
-    def scrubbed_sys_path():
+    def scrubbed_sys_path() -> Iterator[str]:
         """Yields a scrubbed version of sys.path."""
         for p in sys.path[:]:
             if not isinstance(p, str):
@@ -47,7 +49,7 @@ def _scrub_import_environment(sys_modules_whitelist: typing.List[str], logger: t
             if pex_root not in pp.parents:
                 yield p
 
-    def scrub_from_sys_modules():
+    def scrub_from_sys_modules() -> Iterator[str]:
         """Yields keys of sys.modules as candidates for scrubbing/removal."""
         for k, m in sys.modules.items():
             if k in sys_modules_whitelist:
@@ -58,7 +60,7 @@ def _scrub_import_environment(sys_modules_whitelist: typing.List[str], logger: t
                 if pex_root in mp.parents:
                     yield k
 
-    def scrub_env():
+    def scrub_env() -> None:
         # Replace sys.path with a scrubbed version.
         sys.path[:] = list(scrubbed_sys_path())
 
@@ -89,7 +91,7 @@ class _PantsRepo:
 
 
 @magics_class
-class _PexEnvironmentBootstrapper(Magics):
+class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core.magic is untyped.
     """A Magics subclass that provides pants and pex ipython magics."""
 
     # Capture the state of sys.modules at load time. This helps us avoid
@@ -99,18 +101,18 @@ class _PexEnvironmentBootstrapper(Magics):
     class SubprocessFailure(Exception):
         """Raised when a subprocess fails to execute."""
 
-        def __init__(self, msg, return_code=None):
+        def __init__(self, msg: str, return_code: Optional[int] = None) -> None:
             super().__init__(msg)
             self.return_code = return_code
 
     class BuildFailure(SubprocessFailure):
         """Raised when a subprocess fails to execute."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._pants_repo: typing.Optional[_PantsRepo] = None
+        self._pants_repo: Optional[_PantsRepo] = None
 
-    def _display_line(self, msg: str):
+    def _display_line(self, msg: str) -> None:
         print(msg, end="", flush=True)
 
     def _extract_resulting_binary(
@@ -129,12 +131,14 @@ class _PexEnvironmentBootstrapper(Magics):
             )
         return binaries[0]
 
-    def _append_random_id(self, base_name: str, random_id_length=5) -> str:
+    def _append_random_id(self, base_name: str, random_id_length: int = 5) -> str:
         random_id = "".join(random.choice(string.ascii_letters) for n in range(random_id_length))
         return f"{base_name}-{random_id}"
 
     @contextmanager
-    def _accordion_widget(self, title, height="300px", collapsed=True):
+    def _accordion_widget(
+        self, title: str, height: str = "300px", collapsed: bool = True
+    ) -> Iterator[Tuple[Callable[[], None], Callable[[], None], Callable[[str], None]]]:
         """Creates an Accordion widget and yields under care of its output capturer."""
         # Generate unique class for multiple invocations
         unique_class = self._append_random_id("nb-console-output")
@@ -166,17 +170,20 @@ class _PexEnvironmentBootstrapper(Magics):
             unique_class,
         )
 
-        terminalStyling = (
-            "<style>.%s { background-color: black;} .%s pre { color: white; }</style>"
-        ) % (unique_class, unique_class)
+        terminal_styling = (
+            "<style>"
+            f".{unique_class} {{ background-color: black;}} "
+            f".{unique_class} pre {{ color: white; }}"
+            "</style>"
+        )
 
-        def set_output_glyph(glyph):
+        def set_output_glyph(glyph: str) -> None:
             folder.set_title(0, f"{glyph} {title}")
 
-        def expand():
+        def expand() -> None:
             folder.selected_index = 0
 
-        def collapse():
+        def collapse() -> None:
             folder.selected_index = 0
             folder.selected_index = None
 
@@ -184,7 +191,7 @@ class _PexEnvironmentBootstrapper(Magics):
         outputter = ipywidgets.Output(layout=layout)
         outputter.add_class(unique_class)
         outputter.append_display_data(Javascript(auto_scroll_script))
-        outputter.append_display_data(ipywidgets.HTML(terminalStyling))
+        outputter.append_display_data(ipywidgets.HTML(terminal_styling))
 
         folder = ipywidgets.Accordion(children=[outputter])
         folder.selected_index = None if collapsed is True else 0
@@ -207,25 +214,28 @@ class _PexEnvironmentBootstrapper(Magics):
         """Runs a pex-producing command with streaming output and returns the pex location."""
 
         async def spin_driver(
-            set_glyph: typing.Callable, is_complete: asyncio.Event, seq: str = SPINNER_SEQ
-        ):
+            set_glyph: Callable[[str], None], is_complete: asyncio.Event, seq: str = SPINNER_SEQ
+        ) -> None:
             spin_provider = itertools.cycle(seq)
             while not is_complete.is_set():
                 set_glyph(next(spin_provider))
                 await asyncio.sleep(spin_refresh_rate)
 
         async def async_exec(
-            display: typing.Callable, cmd: str, title: str, is_complete: asyncio.Event
+            display: Callable[[str], None], cmd: str, is_complete: asyncio.Event
         ) -> int:
             p = await asyncio.create_subprocess_shell(
                 cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
             )
 
-            while True:
-                line = await p.stdout.readline()
-                if not line:
-                    break
-                display(line.decode())
+            # N.B.: p.stdout can technically be None and the typing is not sophisticated enough to
+            # provide overloads for literals, so we simply guard the pump.
+            if isinstance(p.stdout, asyncio.StreamReader):
+                while True:
+                    line = await p.stdout.readline()
+                    if not line:
+                        break
+                    display(line.decode())
 
             try:
                 return_code = await p.wait()
@@ -234,11 +244,12 @@ class _PexEnvironmentBootstrapper(Magics):
 
             return return_code
 
-        def run_async(executor, spinner):
+        def run_async(executor: Awaitable[int], spinner: Awaitable[None]) -> None:
             nest_asyncio.apply()
             loop = asyncio.get_event_loop()
+            tasks: Iterable[Awaitable[Any]] = [executor, spinner]
             finished, unfinished = loop.run_until_complete(
-                asyncio.wait([executor, spinner], return_when=asyncio.ALL_COMPLETED)
+                asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
             )
             assert len(finished) == 2, f"unexpected async execution results: finished={finished}"
             assert not unfinished, f"unexpected async execution results: unfinished={unfinished}"
@@ -258,7 +269,7 @@ class _PexEnvironmentBootstrapper(Magics):
 
             try:
                 run_async(
-                    async_exec(self._display_line, cmd, title, is_complete),
+                    async_exec(self._display_line, cmd, is_complete),
                     spin_driver(set_output_glyph, is_complete),
                 )
                 resulting_binary = self._extract_resulting_binary(work_dir, extension)
@@ -291,12 +302,14 @@ class _PexEnvironmentBootstrapper(Magics):
     ) -> pathlib.PosixPath:
         """Runs pants with widget UI display."""
 
+        tmp_root: Optional[str]
         if pants_repo.is_pants_v2:
             goal_name = "package"
             # N.B. pants v2 doesn't support `--pants-distdir` outside of the build root.
-            tmp_root = pants_repo.path.joinpath("dist")
+            dist_dir = pants_repo.path.joinpath("dist")
             # N.B. The dist dir must exist for temporary_dir.
-            tmp_root.mkdir(exist_ok=True)
+            dist_dir.mkdir(exist_ok=True)
+            tmp_root = str(dist_dir)
         else:
             goal_name = "binary"
             tmp_root = None
@@ -305,12 +318,12 @@ class _PexEnvironmentBootstrapper(Magics):
             tmp_path = pathlib.PosixPath(tmp_dir)
             title = f"[Build] ./pants {goal_name} {pants_target}"
             cmd = (
-                f'cd {pants_repo.path} && ./pants --pants-distdir="{tmp_path}" {goal_name} '
-                f"{pants_target}"
+                f"cd {pants_repo.path} && ./pants --pants-distdir={tmp_path!r} "
+                f"{goal_name} {pants_target}"
             )
             return self._stream_binary_build_with_output(cmd, title, tmp_path, extension=extension)
 
-    def _bootstrap_pex(self, pex_path: pathlib.PosixPath):
+    def _bootstrap_pex(self, pex_path: pathlib.PosixPath) -> None:
         """Bootstraps a pex with widget UI display."""
         title = f"[Bootstrap] {pex_path.name}"
         with self._accordion_widget(title) as (expand, collapse, set_output_glyph):
@@ -334,8 +347,8 @@ class _PexEnvironmentBootstrapper(Magics):
                 set_output_glyph(SUCCESS_GLYPH)
                 collapse()
 
-    @line_magic
-    def requirements_load(self, requirements: str):
+    @line_magic  # type: ignore[misc]  # IPython.core.magic is untyped.
+    def requirements_load(self, requirements: str) -> None:
         """magic: %requirements_load: resolve and load raw requirement specs with pex(1)."""
         if not requirements:
             self._display_line(
@@ -349,8 +362,8 @@ class _PexEnvironmentBootstrapper(Magics):
         else:
             self._bootstrap_pex(resulting_pex)
 
-    @line_magic
-    def pex_load(self, bootstrap_pex: str):
+    @line_magic  # type: ignore[misc]  # IPython.core.magic is untyped.
+    def pex_load(self, bootstrap_pex: str) -> None:
         """magic: %pex_load: load a pex file from disk into a running python interpreter."""
         if not bootstrap_pex or bootstrap_pex.strip() != bootstrap_pex:
             self._display_line("Usage: %pex_load <pex file>\n")
@@ -365,19 +378,19 @@ class _PexEnvironmentBootstrapper(Magics):
 
     def _validate_pants_repo(self, pants_repo: pathlib.Path) -> bool:
         """Validates a given or stored path is a valid pants repo."""
-        return pants_repo and pants_repo.is_dir() and pants_repo.joinpath("pants").is_file()
+        return pants_repo.is_dir() and pants_repo.joinpath("pants").is_file()
 
-    @line_magic
-    def pants_repo(self, pants_repo: str):
+    @line_magic  # type: ignore[misc]  # IPython.core.magic is untyped.
+    def pants_repo(self, pants_repo: str) -> None:
         """magic: %pants_repo: defines a pants repo path for subsequent use by %pants_load."""
         pants_repo = pants_repo.strip()
         if not pants_repo:
             self._display_line("Usage: %pants_repo <path to pants repo>\n")
             return
 
-        pants_repo = pathlib.PosixPath(pants_repo).expanduser()
-        if not self._validate_pants_repo(pants_repo):
-            self._display_line(f"ERROR: could not find a valid pants repo at {pants_repo}\n")
+        pants_repo_path = pathlib.PosixPath(pants_repo).expanduser()
+        if not self._validate_pants_repo(pants_repo_path):
+            self._display_line(f"ERROR: could not find a valid pants repo at {pants_repo_path}\n")
             return
 
         # Version check for pants v1 vs v2 flags/behavior.
@@ -390,19 +403,26 @@ class _PexEnvironmentBootstrapper(Magics):
         )
         if version_process.returncode != 0:
             raise self.SubprocessFailure(
-                f"`pants --version` failed with:\n{version_process.stderr}",
+                f"`pants --version` failed with:\n{version_process.stderr.decode()}",
                 return_code=version_process.returncode,
             )
         version_string = version_process.stdout.decode().strip()
         is_pants_v2 = version_string.startswith("2")
 
         self._display_line(f"Using pants {version_string} in repo at: {pants_repo}\n")
-        pants_repo = pants_repo.absolute()
-        self._pants_repo = _PantsRepo(pants_repo, is_pants_v2)
+        pants_repo_path = pants_repo_path.absolute()
+        self._pants_repo = _PantsRepo(pants_repo_path, is_pants_v2)
 
-    @line_magic
-    def pants_load(self, pants_target: str):
+    @line_magic  # type: ignore[misc]  # IPython.core.magic is untyped.
+    def pants_load(self, pants_target: str) -> None:
         """magic: %pants_load: build and load a pants-built pex file from disk."""
+        if self._pants_repo is None:
+            self._display_line(
+                "You must first specify the pants repo to load from with: "
+                "%pants_repo <path to pants repo>\n"
+            )
+            return
+
         pants_target = pants_target.strip()
         if not pants_target:
             self._display_line("Usage: %pants_load <pants target>\n")
@@ -410,8 +430,8 @@ class _PexEnvironmentBootstrapper(Magics):
 
         if not self._validate_pants_repo(self._pants_repo.path):
             self._display_line(
-                "ERROR: could not find a valid pants repo. did you run %pants_repo "
-                "<path to repo>?\n"
+                f"ERROR: {self._pants_repo.path} does not appear to be a valid pants repo. "
+                f"Check that the path is a repo with a pants script or executable.\n"
             )
             return
 

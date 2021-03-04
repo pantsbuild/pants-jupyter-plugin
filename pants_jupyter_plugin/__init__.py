@@ -5,9 +5,10 @@
 
 __version__ = "0.0.1"  # N.B.: Flit uses this as our distribution version.
 
+from IPython import InteractiveShell
 
 from .plugin import _PexEnvironmentBootstrapper
 
 
-def load_ipython_extension(ipython):
+def load_ipython_extension(ipython: InteractiveShell) -> None:
     ipython.register_magics(_PexEnvironmentBootstrapper)

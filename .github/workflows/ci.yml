@@ -10,6 +10,9 @@ jobs:
           - check-name: Formatting
             python-version: 3.9
             tox-env: fmt
+          - check-name: Types
+            python-version: 3.9
+            tox-env: typecheck
     steps:
       - name: Checkout
         uses: actions/checkout@v2

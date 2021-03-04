@@ -58,3 +58,22 @@ This magic allows you to build and load a pants `python_binary` target into the 
 ...
 %pants_load <pants target>
 ```
+
+Development
+===========
+
+This repo uses [tox](https://testrun.org/tox/en/latest/) for testing and project automation. To test your changes before sending them off for review just invoke tox:
+
+```
+$ tox
+```
+
+This will auto-format code and run tests. Tests accept passthough args and `pytest-xdist` is installed, so you could run the full test suite with maximum parallelism via:
+
+```
+$ tox -p -epy{py3,3{6,7,8,9}} -- -n auto
+```
+
+Here you run tests against all interpreters the project supports (assuming you have these all installed on your machine and on the `$PATH`) in parallel (the tox `-p` flag) and for each parallel run of tox you run the individual test methods in parallel (via passthrough args to pytest-xdist: `-- -n auto`).
+
+To find out all available tox environments use `tox -a` or inspect [`tox.ini`](tox.ini).

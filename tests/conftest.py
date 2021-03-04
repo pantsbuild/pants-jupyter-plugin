@@ -4,9 +4,11 @@
 import io
 import shutil
 import sys
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
+from uuid import uuid4
 
 import pytest
 import requests
@@ -45,16 +47,23 @@ class PantsRepo:
             pants_exe.parent.mkdir(parents=False, exist_ok=True)
             with FileLock(f"{pants_exe}.lock"):
                 if not pants_exe.exists():
-                    with requests.get(
-                        url=(
-                            "https://github.com/pantsbuild/pants/releases/download/"
-                            f"release_{pants_release.version}/{pants_release.pex}"
-                        ),
-                        stream=True,
-                    ) as response, pants_exe.open(mode="wb") as fp:
+                    url = (
+                        "https://github.com/pantsbuild/pants/releases/download/"
+                        f"release_{pants_release.version}/{pants_release.pex}"
+                    )
+                    download_to = pants_exe.parent / f"{pants_exe.name}.{uuid4().hex}"
+                    with requests.get(url=url, stream=True) as response, download_to.open(
+                        mode="wb"
+                    ) as fp:
+                        assert response.ok, f"GET of {url} returned {response.status_code}."
                         for chunk in response.iter_content(chunk_size=io.DEFAULT_BUFFER_SIZE):
                             fp.write(chunk)
-                    pants_exe.chmod(0o755)
+                    assert zipfile.is_zipfile(download_to), (
+                        f"The Pants PEX at {url} was downloaded to {download_to} but it does not "
+                        "appear to be a valid zip file."
+                    )
+                    download_to.chmod(0o755)
+                    download_to.rename(pants_exe)
 
         pants = build_root / "pants"
         shutil.copy(pants_exe, pants)

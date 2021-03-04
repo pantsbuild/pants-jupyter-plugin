@@ -3,7 +3,6 @@
 
 import io
 import shutil
-import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,8 +13,6 @@ import pytest
 import requests
 from _pytest.tmpdir import TempPathFactory
 from filelock import FileLock
-
-IS_PYPY = hasattr(sys, "pypy_version_info")
 
 
 @dataclass(frozen=True)

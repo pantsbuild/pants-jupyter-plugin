@@ -315,12 +315,12 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
             tmp_root = None
 
         with temporary_dir(root_dir=tmp_root, cleanup=False) as tmp_dir:
-            tmp_path = pathlib.PosixPath(tmp_dir)
             title = f"[Build] ./pants {goal_name} {pants_target}"
             cmd = (
-                f"cd {pants_repo.path} && ./pants --pants-distdir={tmp_path!r} "
+                f"cd {pants_repo.path} && ./pants --pants-distdir={tmp_dir!r} "
                 f"{goal_name} {pants_target}"
             )
+            tmp_path = pathlib.PosixPath(tmp_dir)
             return self._stream_binary_build_with_output(cmd, title, tmp_path, extension=extension)
 
     def _bootstrap_pex(self, pex_path: pathlib.PosixPath) -> None:

@@ -40,6 +40,13 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "${{ join(matrix.python-version, '.') }}"
+      - name: Cache Pants PEXes
+        uses: actions/cache@v2
+        with:
+          path: .pants_versions
+          key: pants-versions
+      - name: Expose Pythons
+        uses: ./.github/actions/expose-pythons
       - name: Run Unit Tests
         uses: ./.github/actions/run-tox
         with:
@@ -58,6 +65,13 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "pypy-${{ join(matrix.pypy-version, '.') }}"
+      - name: Cache Pants PEXes
+        uses: actions/cache@v2
+        with:
+          path: .pants_versions
+          key: pants-versions
+      - name: Expose Pythons
+        uses: ./.github/actions/expose-pythons
       - name: Run Unit Tests
         uses: ./.github/actions/run-tox
         with:

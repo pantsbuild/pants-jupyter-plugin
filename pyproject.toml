@@ -32,6 +32,12 @@ requires = [
   "twitter.common.contextutil==0.3.11",
 ]
 
+[tool.flit.sdist]
+include = ["CHANGES.md"]
+
+[tool.flit.metadata.urls]
+Changelog = "https://github.com/pantsbuild/pants-jupyter-plugin/blob/main/CHANGES.md"
+
 [tool.black]
 line-length = 100
 target-version = ["py36"]

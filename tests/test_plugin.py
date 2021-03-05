@@ -45,11 +45,11 @@ def test_pex_load(pex: Pex, tmpdir: Path) -> None:
     not other_interpreters(), reason="Test requires at least one other interpreter to run."
 )
 def test_pex_load_correct_interpreter(pex: Pex, tmpdir: Path) -> None:
-    pex_file = tmpdir / "psutil.pex"
+    pex_file = tmpdir / "PyYAML.pex"
     subprocess.run(
         args=[
             str(pex.exe),
-            "psutil==5.7.3",
+            "PyYAML==5.4.1",
             "--interpreter-constraint",
             "CPython>=3.6,<4",
             "-o",
@@ -65,9 +65,9 @@ def test_pex_load_correct_interpreter(pex: Pex, tmpdir: Path) -> None:
             dedent(
                 f"""\
                 try:
-                    import psutil
+                    import yaml
                     raise AssertionError(
-                        "Should not have been able to import psutil before loading {pex_file}."
+                        "Should not have been able to import yaml before loading {pex_file}."
                     )
                 except ImportError:
                     # Expected.
@@ -75,7 +75,7 @@ def test_pex_load_correct_interpreter(pex: Pex, tmpdir: Path) -> None:
 
                 %load_ext pants_jupyter_plugin
                 %pex_load {pex_file}
-                import psutil
+                import yaml
                 """
             ),
         ],
@@ -87,12 +87,12 @@ def test_pex_load_correct_interpreter(pex: Pex, tmpdir: Path) -> None:
     not other_interpreters(), reason="Test requires at least one other interpreter to run."
 )
 def test_pex_load_correct_interpreter_not_available(pex: Pex, tmpdir: Path) -> None:
-    pex_file = tmpdir / "psutil.pex"
+    pex_file = tmpdir / "PyYAML.pex"
     current_interpreter_version = ".".join(map(str, sys.version_info[:3]))
     subprocess.run(
         args=[
             str(pex.exe),
-            "psutil==5.7.3",
+            "PyYAML==5.4.1",
             "--interpreter-constraint",
             f"CPython>=3.6,<4,!={current_interpreter_version}",
             "-o",
@@ -110,7 +110,7 @@ def test_pex_load_correct_interpreter_not_available(pex: Pex, tmpdir: Path) -> N
                 f"""\
                 %load_ext pants_jupyter_plugin
                 %pex_load {pex_file}
-                import psutil
+                import yaml
                 """
             ),
         ],

@@ -51,7 +51,7 @@ def test_pex_load_correct_interpreter(pex: Pex, tmpdir: Path) -> None:
             str(pex.exe),
             "psutil==5.7.3",
             "--interpreter-constraint",
-            "CPython>=2.7,<4",
+            "CPython>=3.6,<4",
             "-o",
             str(pex_file),
         ],
@@ -94,7 +94,7 @@ def test_pex_load_correct_interpreter_not_available(pex: Pex, tmpdir: Path) -> N
             str(pex.exe),
             "psutil==5.7.3",
             "--interpreter-constraint",
-            f"CPython>=2.7,<4,!={current_interpreter_version}",
+            f"CPython>=3.6,<4,!={current_interpreter_version}",
             "-o",
             str(pex_file),
         ],
@@ -124,7 +124,7 @@ def test_pex_load_correct_interpreter_not_available(pex: Pex, tmpdir: Path) -> N
         f"{current_interpreter_version}."
     )
     lines.remove(f"This is not compatible with the PEX at {pex_file}.")
-    lines.remove(f"It has interpreter constraints CPython>=2.7,<4,!={current_interpreter_version}.")
+    lines.remove(f"It has interpreter constraints CPython>=3.6,<4,!={current_interpreter_version}.")
 
     count = -1
     for line in list(lines):

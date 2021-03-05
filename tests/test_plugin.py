@@ -5,13 +5,14 @@ import subprocess
 from pathlib import Path
 from textwrap import dedent
 
-import pytest
 from conftest import PantsRepo
 
+from pants_jupyter_plugin.pex import Pex
 
-def test_pex_load(tmpdir: Path) -> None:
+
+def test_pex_load(pex: Pex, tmpdir: Path) -> None:
     pex_file = tmpdir / "colors.pex"
-    subprocess.run(["pex", "ansicolors==1.1.8", "-o", pex_file], check=True)
+    subprocess.run([str(pex.exe), "ansicolors==1.1.8", "-o", pex_file], check=True)
     subprocess.run(
         [
             "ipython",

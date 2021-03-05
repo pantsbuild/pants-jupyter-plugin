@@ -11,77 +11,20 @@ import subprocess
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Container, Iterable, Iterator, Optional, Tuple
+from typing import Any, Awaitable, Callable, Iterable, Iterator, Optional, Tuple
 
 import ipywidgets
 import nest_asyncio
 from IPython.core.magic import Magics, line_magic, magics_class
 from IPython.display import Javascript, display
-from pex.pex_bootstrapper import bootstrap_pex_env
-from pex.variables import Variables
+from twitter.common.contextutil import environment_as, temporary_dir
 
 # TODO: replace or vendor these.
-from twitter.common.contextutil import environment_as, temporary_dir
+from pants_jupyter_plugin.pex import Pex
 
 FAIL_GLYPH = "✗"
 SUCCESS_GLYPH = "✓"
 SPINNER_SEQ = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-
-
-def _scrub_import_environment(
-    sys_modules_whitelist: Container[str], logger: Callable[[str], None]
-) -> None:
-    """Scrubs sys.path and sys.modules to a raw state.
-
-    WARNING: This will irreversably mutate sys.path and sys.modules each time it's called.
-    """
-    pex_root = pathlib.Path(Variables().PEX_ROOT)
-
-    # A generator that emits sys.path elements
-    def scrubbed_sys_path() -> Iterator[str]:
-        """Yields a scrubbed version of sys.path."""
-        for p in sys.path[:]:
-            if not isinstance(p, str):
-                yield p
-
-            # Scrub any/all pex locations from sys.path.
-            pp = pathlib.Path(p)
-            if pex_root not in pp.parents:
-                yield p
-
-    def scrub_from_sys_modules() -> Iterator[str]:
-        """Yields keys of sys.modules as candidates for scrubbing/removal."""
-        for k, m in sys.modules.items():
-            if k in sys_modules_whitelist:
-                continue
-
-            if hasattr(m, "__file__") and m.__file__ is not None:
-                mp = pathlib.Path(m.__file__)
-                if pex_root in mp.parents:
-                    yield k
-
-    def scrub_env() -> None:
-        # Replace sys.path with a scrubbed version.
-        sys.path[:] = list(scrubbed_sys_path())
-
-        # Drop module cache references from sys.modules.
-        modules_to_scrub = list(scrub_from_sys_modules())
-        for m in modules_to_scrub:
-            del sys.modules[m]
-
-    logger("Scrubbing sys.path and sys.modules in preparation for pex bootstrap\n")
-    logger(
-        f"sys.path contains {len(sys.path)} items, "
-        f"sys.modules contains {len(sys.modules)} keys\n"
-    )
-
-    # Scrub environment.
-    scrub_env()
-
-    logger(
-        f"sys.path now contains {len(sys.path)} items, "
-        f"sys.modules now contains {len(sys.modules)} keys\n"
-    )
 
 
 @dataclass(frozen=True)
@@ -110,6 +53,7 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self._pex = Pex.load()
         self._pants_repo: Optional[_PantsRepo] = None
 
     def _display_line(self, msg: str) -> None:
@@ -294,7 +238,7 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
             title = f"[Resolve] {requirements}"
             safe_requirements = " ".join(shlex.quote(r) for r in shlex.split(requirements))
             # TODO: Add support for toggling `--no-pypi` and find-links/index configs.
-            cmd = f'pex -vv -o "{output_pex}" {safe_requirements}'
+            cmd = f'{self._pex.exe} -vv -o "{output_pex}" {safe_requirements}'
             return self._stream_binary_build_with_output(cmd, title, tmp_path, extension="pex")
 
     def _run_pants(
@@ -330,12 +274,24 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
             try:
                 with environment_as(PEX_VERBOSE="2"):
                     # Scrub the environment.
-                    _scrub_import_environment(
-                        self._ORIGINATING_SYS_MODULES_KEYS, self._display_line
+
+                    self._display_line(
+                        "Scrubbing sys.path and sys.modules in preparation for pex bootstrap\n"
+                    )
+                    self._display_line(
+                        f"sys.path contains {len(sys.path)} items, "
+                        f"sys.modules contains {len(sys.modules)} keys\n"
+                    )
+                    for path in self._pex.unmount():
+                        self._display_line(f"scrubbed sys.path entry {path}\n")
+                    self._display_line(
+                        f"sys.path now contains {len(sys.path)} items, "
+                        f"sys.modules now contains {len(sys.modules)} keys\n"
                     )
 
                     # Bootstrap pex.
-                    bootstrap_pex_env(pex_path)
+                    for path in self._pex.mount_pex(pex_path):
+                        self._display_line(f"added sys.path entry {path}\n")
             except Exception:
                 try:
                     set_output_glyph(FAIL_GLYPH)

@@ -25,11 +25,13 @@ classifiers = [
 requires-python = ">=3.6,<3.10"
 requires = [
   "dataclasses==0.8; python_version == '3.6'",
+  "filelock==3.0.12",
   "ipython==7.16.1",
   "ipywidgets==7.6.3",
   "nest_asyncio==1.5.1",
-  "pex==2.1.32",
+  "requests==2.25.1",
   "twitter.common.contextutil==0.3.11",
+  "xdg==5.0.1",
 ]
 
 [tool.flit.sdist]

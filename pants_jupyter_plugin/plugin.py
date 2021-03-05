@@ -239,7 +239,10 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
             title = f"[Resolve] {requirements}"
             safe_requirements = " ".join(shlex.quote(r) for r in shlex.split(requirements))
             # TODO: Add support for toggling `--no-pypi` and find-links/index configs.
-            cmd = f'{self._pex.exe} -vv -o "{output_pex}" {safe_requirements}'
+            cmd = (
+                f'{self._pex.exe} -vv --python {sys.executable} -o "{output_pex}" '
+                f"{safe_requirements}"
+            )
             return self._stream_binary_build_with_output(cmd, title, tmp_path, extension="pex")
 
     def _run_pants(
@@ -291,7 +294,7 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
                     )
 
                     # Bootstrap pex.
-                    for path in self._pex.mount_pex(pex_path):
+                    for path in self._pex.mount(pex_path):
                         self._display_line(f"added sys.path entry {path}\n")
             except Exception:
                 try:

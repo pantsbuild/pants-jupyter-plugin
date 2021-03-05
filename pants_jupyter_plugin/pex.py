@@ -2,26 +2,53 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 import hashlib
+import json
 import os
 import subprocess
 import sys
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator, List, Optional
+from textwrap import dedent
+from typing import Any, Iterable, Iterator, List, Optional, Sequence
 
-from pants_jupyter_plugin import cache
+from pants_jupyter_plugin import cache, env
 from pants_jupyter_plugin.download import DownloadError, download_once
 from pants_jupyter_plugin.lock import creation_lock
 
 
 @dataclass(frozen=True)
 class Pex:
+    class IncompatibleError(Exception):
+        """Indicates an incompatible PEX could not be loaded by the current interpreter."""
+
+        def __init__(
+            self,
+            pex: Path,
+            interpreter_constraints: Iterable[str],
+            compatible_interpreters: Sequence[Path],
+        ) -> None:
+            version = ".".join(map(str, sys.version_info[:3]))
+            compatible_interpreters_list = os.linesep.join(
+                f"{index}.) {path}" for index, path in enumerate(compatible_interpreters, start=1)
+            )
+            super().__init__(
+                dedent(
+                    f"""\
+                    The current interpreter {sys.executable} has version {version}.
+                    This is not compatible with the PEX at {pex}.
+                    It has interpreter constraints {" or ".join(interpreter_constraints)}.
+                    There are {len(compatible_interpreters)} compatible interpreters on this system:
+                    """
+                )
+                + compatible_interpreters_list
+            )
+
     DEFAULT_VERSION = "2.1.32"
     _CACHE = cache.DIR / "pex"
 
     exe: Path
-    mounted: List[Path] = field(default_factory=list)
+    mounted: List[Path] = field(default_factory=list, hash=False)
 
     @staticmethod
     def download_once(url: str, download_to: Path) -> None:
@@ -67,23 +94,60 @@ class Pex:
                         del sys.modules[name]
             yield pex_sys_path_entry
 
-    def mount_pex(self, pex_to_mount: Path) -> Iterator[Path]:
+    def mount(self, pex_to_mount: Path) -> Iterator[Path]:
         """Mounts the contents of the given PEX on the sys.path for importing."""
-        venv = (
-            self._CACHE
-            / "venvs"
-            / hashlib.sha1(pex_to_mount.read_bytes()).hexdigest()
-            / pex_to_mount.name
-        )
+        current_interpreter = Path(sys.executable)
+
+        hasher = hashlib.sha1()
+        hasher.update(current_interpreter.read_bytes())
+        hasher.update(pex_to_mount.read_bytes())
+        fingerprint = hasher.hexdigest()
+
+        venv = self._CACHE / "venvs" / fingerprint / pex_to_mount.name
         with creation_lock(venv) as locked:
             if locked:
-                env = os.environ.copy()
-                env.update(PEX_INTERPRETER="1")
-                subprocess.run(
-                    args=[str(self.exe), "-m", "pex.tools", str(pex_to_mount), "venv", str(venv)],
-                    env=env,
-                    check=True,
-                )
+                # Force the venv to select the current interpreter as the base interpreter or fail
+                # if it's not compatible with constraints.
+                def run_pex_tool(args: Iterable[str], **subprocess_args: Any) -> bytes:
+                    return (
+                        subprocess.run(
+                            args=[
+                                sys.executable,
+                                str(self.exe),
+                                "-m",
+                                "pex.tools",
+                                str(pex_to_mount),
+                                *args,
+                            ],
+                            env=env.create(PEX_INTERPRETER=1, PEX_PYTHON_PATH=sys.executable),
+                            check=True,
+                            **subprocess_args,
+                        ).stdout
+                        or b""
+                    )
+
+                selected_interpreter = json.loads(
+                    run_pex_tool(args=["interpreter", "-v"], stdout=subprocess.PIPE).decode()
+                )["path"]
+                if not current_interpreter.samefile(selected_interpreter):
+                    compatible_interpreters = [
+                        json.loads(line)["path"]
+                        for line in run_pex_tool(
+                            args=["interpreter", "--all", "-v"], stdout=subprocess.PIPE
+                        )
+                        .decode()
+                        .splitlines()
+                    ]
+                    interpreter_constraints = json.loads(
+                        run_pex_tool(args=["info"], stdout=subprocess.PIPE).decode()
+                    )["interpreter_constraints"]
+                    raise self.IncompatibleError(
+                        pex_to_mount,
+                        interpreter_constraints=interpreter_constraints,
+                        compatible_interpreters=compatible_interpreters,
+                    )
+                run_pex_tool(args=["venv", str(venv)])
+
         python = venv / "bin" / "python"
         result = subprocess.run(
             args=[

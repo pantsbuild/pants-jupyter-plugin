@@ -15,7 +15,7 @@ from pants_jupyter_plugin.pex import Pex
 
 def test_pex_load(pex: Pex, tmpdir: Path) -> None:
     pex_file = tmpdir / "colors.pex"
-    subprocess.run([str(pex.exe), "ansicolors==1.1.8", "-o", pex_file], check=True)
+    subprocess.run([str(pex.exe), "ansicolors==1.1.8", "-o", str(pex_file)], check=True)
     subprocess.run(
         args=[
             "ipython",
@@ -53,7 +53,7 @@ def test_pex_load_correct_interpreter(pex: Pex, tmpdir: Path) -> None:
             "--interpreter-constraint",
             "CPython>=2.7,<4",
             "-o",
-            pex_file,
+            str(pex_file),
         ],
         check=True,
     )
@@ -96,7 +96,7 @@ def test_pex_load_correct_interpreter_not_available(pex: Pex, tmpdir: Path) -> N
             "--interpreter-constraint",
             f"CPython>=2.7,<4,!={current_interpreter_version}",
             "-o",
-            pex_file,
+            str(pex_file),
         ],
         check=True,
     )

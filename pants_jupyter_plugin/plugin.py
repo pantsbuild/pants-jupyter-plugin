@@ -17,9 +17,10 @@ import ipywidgets
 import nest_asyncio
 from IPython.core.magic import Magics, line_magic, magics_class
 from IPython.display import Javascript, display
-from twitter.common.contextutil import environment_as, temporary_dir
 
 # TODO: replace or vendor these.
+from twitter.common.contextutil import environment_as, temporary_dir
+
 from pants_jupyter_plugin.pex import Pex
 
 FAIL_GLYPH = "✗"

@@ -29,6 +29,7 @@ class Pex:
 
         The PEX file will be sanity checked to at least be a zip file and made executable.
         """
+
         def activate_pex(path: Path) -> None:
             if not zipfile.is_zipfile(path):
                 raise DownloadError(

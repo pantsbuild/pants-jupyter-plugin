@@ -8,7 +8,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 import pytest
 from _pytest.tmpdir import TempPathFactory
@@ -123,3 +123,8 @@ def pants_v1_repo(tmp_path_factory: TempPathFactory) -> PantsRepo:
         )
     )
     return repo
+
+
+def pytest_generate_tests(metafunc: Any) -> None:
+    if "input_notebook" in metafunc.fixturenames:
+        metafunc.parametrize("input_notebook", Path("examples").glob("*.ipynb"))

@@ -10,7 +10,7 @@ author-email = "pantsbuild@gmail.com"
 home-page = "https://github.com/pantsbuild/pants-jupyter-plugin"
 description-file = "README.md"
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: Apache Software License",
@@ -25,13 +25,13 @@ classifiers = [
 requires-python = ">=3.6,<3.10"
 requires = [
   "dataclasses==0.8; python_version == '3.6'",
-  "filelock==3.0.12",
-  "ipython==7.16.1",
-  "ipywidgets==7.6.3",
-  "nest_asyncio==1.5.1",
-  "requests==2.25.1",
-  "twitter.common.contextutil==0.3.11",
-  "xdg==5.0.1",
+  "filelock>=3.0",
+  "ipython>=5.5.0,<8.0",
+  "ipywidgets>=7.0.0,<8.0",
+  "nest_asyncio~=1.5.1",
+  "requests>=2.22.0",
+  "twitter.common.contextutil~=0.3.11",
+  "xdg>=5.0.0,<6.0",
 ]
 
 [tool.flit.sdist]

@@ -4,7 +4,6 @@
 from pathlib import Path
 
 import papermill  # type: ignore
-import pytest
 from twitter.common.contextutil import pushd
 
 

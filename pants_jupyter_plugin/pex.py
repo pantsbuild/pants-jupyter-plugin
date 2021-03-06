@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, Iterable, Iterator, List, Optional, Sequence
+from uuid import uuid4
 
 from pants_jupyter_plugin import cache, env
 from pants_jupyter_plugin.download import DownloadError, download_once
@@ -146,7 +147,9 @@ class Pex:
                         interpreter_constraints=interpreter_constraints,
                         compatible_interpreters=compatible_interpreters,
                     )
-                run_pex_tool(args=["venv", str(venv)])
+                venv_tmp = venv.parent / f"{venv.name}.{uuid4().hex}"
+                run_pex_tool(args=["venv", str(venv_tmp)])
+                venv_tmp.rename(venv)
 
         python = venv / "bin" / "python"
         result = subprocess.run(

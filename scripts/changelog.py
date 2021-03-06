@@ -1,6 +1,6 @@
 import os
-import subprocess
 import site
+import subprocess
 import sys
 from textwrap import dedent
 
@@ -31,5 +31,8 @@ with open("CHANGES.md", "a") as fp:
 
             {changes}
             """
-        ).format(version=pants_jupyter_plugin.__version__, changes=changes)
+        ).format(
+            version=pants_jupyter_plugin.__version__,
+            changes=os.linesep.join(f"+ {line}" for line in changes.splitlines()),
+        )
     )

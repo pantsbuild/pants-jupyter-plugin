@@ -5,7 +5,8 @@
 ### Version Bump and Changelog
 
 Bump the version in [`pants_jupyter_plugin/__init__.py`](pants_jupyter_plugin/__init__.py) and
-update [`CHANGES.md`](CHANGES.md). Open a PR with these changes and land it on
+run `tox -echangelog` to update [`CHANGES.md`](CHANGES.md). Delete any entries that aren't likely
+to be useful to consumers and then open a PR with these changes and land it on
 https://github.com/pantsbuild/pants-jupyter-plugin main.
 
 ## Release

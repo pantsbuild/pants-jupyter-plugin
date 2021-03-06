@@ -8,7 +8,7 @@ from typing import Any, Mapping
 def create(**env_vars: Any) -> Mapping[str, str]:
     """Creates a copy of the current environment with the specified alterations.
 
-    Keyword parameters with non-`None` values are added to the environment with the enviornment
+    Keyword parameters with non-`None` values are added to the environment with the environment
     variable value being taken from the str representation of the value. Keyword parameters with
     `None` values are removed from the environment.
     """

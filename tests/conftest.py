@@ -1,20 +1,55 @@
 # Copyright 2021 Pants project contributors (see CONTRIBUTORS.md).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+import json
 import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
+from typing import Dict, Iterator, Optional, Tuple
 
 import pytest
 from _pytest.tmpdir import TempPathFactory
 
+from pants_jupyter_plugin import env
 from pants_jupyter_plugin.pex import Pex
 
 
 @pytest.fixture
 def pex() -> Pex:
     return Pex.load()
+
+
+_INTERPRETER_CACHE: Dict[Pex, Tuple[Path, ...]] = {}
+
+
+def interpreters(pex: Optional[Pex] = None) -> Tuple[Path, ...]:
+    selected_pex: Pex = pex if pex is not None else Pex.load()
+    pythons = _INTERPRETER_CACHE.get(selected_pex, None)
+    if pythons is None:
+        output = subprocess.check_output(
+            args=[str(selected_pex.exe), "interpreter", "--all", "-v"], env=env.create(PEX_TOOLS=1)
+        )
+
+        def iter_interpreters() -> Iterator[Path]:
+            for line in output.decode().splitlines():
+                yield Path(json.loads(line)["path"])
+
+        _INTERPRETER_CACHE[selected_pex] = pythons = tuple(iter_interpreters())
+    return pythons
+
+
+def other_interpreters(pex: Optional[Pex] = None) -> Tuple[Path, ...]:
+    current_interpreter = Path(sys.executable)
+
+    def iter_other_interpreters() -> Iterator[Path]:
+        for path in interpreters(pex):
+            if not current_interpreter.samefile(path):
+                yield path
+
+    return tuple(iter_other_interpreters())
 
 
 @dataclass(frozen=True)

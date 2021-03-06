@@ -5,7 +5,7 @@ from pathlib import Path
 
 import papermill  # type: ignore
 import pytest
-from twitter.common.contextutil import pushd, temporary_dir
+from twitter.common.contextutil import pushd
 
 
 def test_notebook_integration(input_notebook: Path, tmpdir: Path) -> None:

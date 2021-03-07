@@ -1,6 +1,11 @@
 Overview
 ========
 
+[![PyPI Version](https://shields.io/pypi/v/pants-jupyter-plugin.svg)](https://pypi.org/project/pants-jupyter-plugin/)
+[![License](https://shields.io/pypi/l/pants-jupyter-plugin.svg)](LICENSE)
+[![Supported Pythons](https://shields.io/pypi/pyversions/pants-jupyter-plugin.svg)](pyproject.toml)
+[![CI](https://github.com/pantsbuild/pants-jupyter-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/pantsbuild/pants-jupyter-plugin/actions/workflows/ci.yml)
+
 This repo contains a set of Jupyter Notebook plugins that enable interop with pex and pants.
 
 Installation
@@ -71,7 +76,7 @@ $ tox
 This will auto-format code and run tests. Tests accept passthough args and `pytest-xdist` is installed, so you could run the full test suite with maximum parallelism via:
 
 ```
-$ tox -p -epy{py3,3{6,7,8,9}} -- -n auto
+$ tox -p -epy3{6,7,8,9} -- -n auto
 ```
 
 Here you run tests against all interpreters the project supports (assuming you have these all installed on your machine and on the `$PATH`) in parallel (the tox `-p` flag) and for each parallel run of tox you run the individual test methods in parallel (via passthrough args to pytest-xdist: `-- -n auto`).

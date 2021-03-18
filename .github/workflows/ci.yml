@@ -49,7 +49,7 @@ jobs:
           path: .pants_versions
           key: pants-versions
       - name: Expose Pythons
-        uses: ./.github/actions/expose-pythons
+        uses: pantsbuild/actions/expose-pythons@627a8ce25d972afa03da1641be9261bbbe0e3ffe
       - name: Run Unit Tests
         uses: ./.github/actions/run-tox
         with:

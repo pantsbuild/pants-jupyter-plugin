@@ -1,8 +1,16 @@
 name: CI
 on: [push, pull_request]
 jobs:
+  org-check:
+    name: Check GitHub Organization
+    if: ${{ github.repository_owner == 'pantsbuild' }}
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Noop
+        run: "true"
   checks:
     name: TOXENV=${{ matrix.tox-env }}
+    needs: org-check
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -26,6 +34,7 @@ jobs:
           tox-env: ${{ matrix.tox-env }}
   cpython-unit-tests:
     name: (${{ matrix.os }}) TOXENV=py${{ join(matrix.python-version, '') }}
+    needs: org-check
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

@@ -23,7 +23,6 @@ _CACHE = cache.DIR / "pex"
 @dataclass(frozen=True)
 class Pex:
     exe: Path
-    version: Tuple[int, int, int]
 
     @staticmethod
     def download_once(url: str, download_to: Path) -> None:
@@ -43,12 +42,11 @@ class Pex:
         download_once(url, download_to, post_process=activate_pex)
 
     @classmethod
-    def load(cls, version: Tuple[int, int, int]) -> "Pex":
-        pex_version = ".".join(map(str, version))
-        url = f"https://github.com/pantsbuild/pex/releases/download/v{pex_version}/pex"
-        pex_exe = _CACHE / "exes" / f"pex-{pex_version}.pex"
+    def load(cls, version: str) -> "Pex":
+        url = f"https://github.com/pantsbuild/pex/releases/download/v{version}/pex"
+        pex_exe = _CACHE / "exes" / f"pex-{version}.pex"
         cls.download_once(url, pex_exe)
-        return cls(exe=pex_exe, version=version)
+        return cls(exe=pex_exe)
 
 
 @dataclass
@@ -78,8 +76,8 @@ class PexManager:
                 + compatible_interpreters_list
             )
 
-    DEFAULT_VERSION = (2, 1, 56)
-    FALLBACK_VERSION = (2, 1, 32)
+    DEFAULT_VERSION = "2.1.56"
+    FALLBACK_VERSION = "2.1.32"
 
     pex: Pex
     _fallback_pex: Optional[Pex] = None

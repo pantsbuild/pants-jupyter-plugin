@@ -14,19 +14,23 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 
 from pants_jupyter_plugin import env
-from pants_jupyter_plugin.pex import Pex
+from pants_jupyter_plugin.pex import Pex, PexManager
+
+
+def load_pex() -> Pex:
+    return PexManager.load().pex
 
 
 @pytest.fixture
 def pex() -> Pex:
-    return Pex.load()
+    return load_pex()
 
 
 _INTERPRETER_CACHE: Dict[Pex, Tuple[Path, ...]] = {}
 
 
 def interpreters(pex: Optional[Pex] = None) -> Tuple[Path, ...]:
-    selected_pex: Pex = pex if pex is not None else Pex.load()
+    selected_pex: Pex = pex if pex is not None else load_pex()
     pythons = _INTERPRETER_CACHE.get(selected_pex, None)
     if pythons is None:
         output = subprocess.check_output(

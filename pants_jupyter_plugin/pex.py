@@ -10,16 +10,49 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Iterable, Iterator, List, Optional, Sequence
+from typing import Any, Iterable, Iterator, List, Optional, Sequence, Tuple
 from uuid import uuid4
 
 from pants_jupyter_plugin import cache, env
 from pants_jupyter_plugin.download import DownloadError, download_once
 from pants_jupyter_plugin.lock import creation_lock
 
+_CACHE = cache.DIR / "pex"
+
 
 @dataclass(frozen=True)
 class Pex:
+    exe: Path
+    version: Tuple[int, int, int]
+
+    @staticmethod
+    def download_once(url: str, download_to: Path) -> None:
+        """Downloads a PEX file once.
+
+        The PEX file will be sanity checked to at least be a zip file and made executable.
+        """
+
+        def activate_pex(path: Path) -> None:
+            if not zipfile.is_zipfile(path):
+                raise DownloadError(
+                    f"The PEX at {url} was downloaded to {path} but it does not appear to be a "
+                    "valid zip file."
+                )
+            path.chmod(0o755)
+
+        download_once(url, download_to, post_process=activate_pex)
+
+    @classmethod
+    def load(cls, version: Tuple[int, int, int]) -> "Pex":
+        pex_version = ".".join(map(str, version))
+        url = f"https://github.com/pantsbuild/pex/releases/download/v{pex_version}/pex"
+        pex_exe = _CACHE / "exes" / f"pex-{pex_version}.pex"
+        cls.download_once(url, pex_exe)
+        return cls(exe=pex_exe, version=version)
+
+
+@dataclass
+class PexManager:
     class IncompatibleError(Exception):
         """Indicates an incompatible PEX could not be loaded by the current interpreter."""
 
@@ -45,36 +78,22 @@ class Pex:
                 + compatible_interpreters_list
             )
 
-    DEFAULT_VERSION = "2.1.56"
-    _CACHE = cache.DIR / "pex"
+    DEFAULT_VERSION = (2, 1, 56)
+    FALLBACK_VERSION = (2, 1, 32)
 
-    exe: Path
+    pex: Pex
+    _fallback_pex: Optional[Pex] = None
     mounted: List[Path] = field(default_factory=list, hash=False)
 
-    @staticmethod
-    def download_once(url: str, download_to: Path) -> None:
-        """Downloads a PEX file once.
-
-        The PEX file will be sanity checked to at least be a zip file and made executable.
-        """
-
-        def activate_pex(path: Path) -> None:
-            if not zipfile.is_zipfile(path):
-                raise DownloadError(
-                    f"The PEX at {url} was downloaded to {path} but it does not appear to be a "
-                    "valid zip file."
-                )
-            path.chmod(0o755)
-
-        download_once(url, download_to, post_process=activate_pex)
-
     @classmethod
-    def load(cls, version: Optional[str] = None) -> "Pex":
-        pex_version = version or cls.DEFAULT_VERSION
-        url = f"https://github.com/pantsbuild/pex/releases/download/v{pex_version}/pex"
-        pex_exe = cls._CACHE / "exes" / f"pex-{pex_version}.pex"
-        cls.download_once(url, pex_exe)
-        return cls(exe=pex_exe)
+    def load(cls) -> "PexManager":
+        return cls(pex=Pex.load(cls.DEFAULT_VERSION))
+
+    @property
+    def fallback_pex(self) -> Pex:
+        if self._fallback_pex is None:
+            self._fallback_pex = Pex.load(self.FALLBACK_VERSION)
+        return self._fallback_pex
 
     def unmount(self) -> Iterator[Path]:
         """Scrubs sys.path and sys.modules of any contents from previously mounted PEXes.
@@ -104,9 +123,11 @@ class Pex:
         hasher.update(pex_to_mount.read_bytes())
         fingerprint = hasher.hexdigest()
 
-        venv = self._CACHE / "venvs" / fingerprint / pex_to_mount.name
+        venv = _CACHE / "venvs" / fingerprint / pex_to_mount.name
         with creation_lock(venv) as locked:
             if locked:
+                pex = self.pex
+
                 # Force the venv to select the current interpreter as the base interpreter or fail
                 # if it's not compatible with constraints.
                 def run_pex_tool(args: Iterable[str], **subprocess_args: Any) -> bytes:
@@ -114,7 +135,7 @@ class Pex:
                         subprocess.run(
                             args=[
                                 sys.executable,
-                                str(self.exe),
+                                str(pex.exe),
                                 "-m",
                                 "pex.tools",
                                 str(pex_to_mount),
@@ -126,6 +147,10 @@ class Pex:
                         ).stdout
                         or b""
                     )
+
+                pex_info = json.loads(run_pex_tool(args=["info"], stdout=subprocess.PIPE).decode())
+                if "pex_hash" not in pex_info:
+                    pex = self.fallback_pex
 
                 selected_interpreter = json.loads(
                     run_pex_tool(args=["interpreter", "-v"], stdout=subprocess.PIPE).decode()
@@ -139,9 +164,7 @@ class Pex:
                         .decode()
                         .splitlines()
                     ]
-                    interpreter_constraints = json.loads(
-                        run_pex_tool(args=["info"], stdout=subprocess.PIPE).decode()
-                    )["interpreter_constraints"]
+                    interpreter_constraints = pex_info["interpreter_constraints"]
                     raise self.IncompatibleError(
                         pex_to_mount,
                         interpreter_constraints=interpreter_constraints,

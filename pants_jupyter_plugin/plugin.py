@@ -21,7 +21,7 @@ from IPython.display import Javascript, display
 # TODO: replace or vendor these.
 from twitter.common.contextutil import environment_as, temporary_dir
 
-from pants_jupyter_plugin.pex import Pex
+from pants_jupyter_plugin.pex import Pex, PexManager
 
 FAIL_GLYPH = "✗"
 SUCCESS_GLYPH = "✓"
@@ -54,7 +54,7 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._pex = Pex.load()
+        self._pex_manager = PexManager.load()
         self._pants_repo: Optional[_PantsRepo] = None
 
     def _display_line(self, msg: str) -> None:
@@ -240,8 +240,8 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
             safe_requirements = " ".join(shlex.quote(r) for r in shlex.split(requirements))
             # TODO: Add support for toggling `--no-pypi` and find-links/index configs.
             cmd = (
-                f'{self._pex.exe} -vv --python {sys.executable} -o "{output_pex}" '
-                f"{safe_requirements}"
+                f"{self._pex_manager.pex.exe} -vv --python {sys.executable} "
+                f'-o "{output_pex}" {safe_requirements}'
             )
             return self._stream_binary_build_with_output(cmd, title, tmp_path, extension="pex")
 
@@ -286,7 +286,7 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
                         f"sys.path contains {len(sys.path)} items, "
                         f"sys.modules contains {len(sys.modules)} keys\n"
                     )
-                    for path in self._pex.unmount():
+                    for path in self._pex_manager.unmount():
                         self._display_line(f"scrubbed sys.path entry {path}\n")
                     self._display_line(
                         f"sys.path now contains {len(sys.path)} items, "
@@ -294,7 +294,7 @@ class _PexEnvironmentBootstrapper(Magics):  # type: ignore[misc]  # IPython.core
                     )
 
                     # Bootstrap pex.
-                    for path in self._pex.mount(pex_path):
+                    for path in self._pex_manager.mount(pex_path):
                         self._display_line(f"added sys.path entry {path}\n")
             except Exception:
                 try:

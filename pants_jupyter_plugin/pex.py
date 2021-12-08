@@ -45,7 +45,7 @@ class Pex:
                 + compatible_interpreters_list
             )
 
-    DEFAULT_VERSION = "2.1.32"
+    DEFAULT_VERSION = "2.1.56"
     _CACHE = cache.DIR / "pex"
 
     exe: Path

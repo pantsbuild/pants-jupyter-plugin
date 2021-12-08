@@ -63,7 +63,7 @@ class PantsRelease:
 
 
 PANTS_V1 = PantsRelease(version="1.27.0", pex="pants.1.27.0.py36.pex")
-PANTS_V2 = PantsRelease.create("2.2.0")
+PANTS_V2 = PantsRelease.create("2.8.0")
 
 
 @dataclass(frozen=True)

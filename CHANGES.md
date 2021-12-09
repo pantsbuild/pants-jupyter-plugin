@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.0.4
+
++ [ae27c73](https://github.com/pantsbuild/pants-jupyter-plugin/commit/ae27c73) Upgrade to Pex 2.1.56 for Python 3.10 support. (#35)
+
 ## 0.0.3
 
 + [364bcbf](https://github.com/pantsbuild/pants-jupyter-plugin/commit/364bcbf) Relax version pins. (#29)
@@ -12,4 +16,5 @@
 ## 0.0.1
 
 Initial public release.
+
 

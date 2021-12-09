@@ -18,7 +18,7 @@ class DownloadError(Exception):
 def download_once(
     url: str, path: Path, post_process: Callable[[Path], None] = lambda _: None
 ) -> None:
-    """Donloads a file from the given url to the given path exactly once.
+    """Downloads a file from the given url to the given path exactly once.
 
     If a post_process function is given, it's passed the path of the temporary download file to
     inspect or post-process in any way seen fit except moving the file.

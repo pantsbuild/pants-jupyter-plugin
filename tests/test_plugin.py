@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 from textwrap import dedent
+from typing import Optional
 
 import pytest
 from conftest import PantsRepo, other_interpreters
@@ -173,8 +174,13 @@ def test_requirements_load() -> None:
     )
 
 
-def check_pants_load(pants_repo: PantsRepo, pex_target: str, expected_module: str) -> None:
-    subprocess.run(
+def check_pants_load(
+    pants_repo: PantsRepo,
+    pex_target: str,
+    expected_module: str,
+    expected_error: Optional[str] = None,
+) -> None:
+    result = subprocess.run(
         args=[
             "ipython",
             "-c",
@@ -197,8 +203,11 @@ def check_pants_load(pants_repo: PantsRepo, pex_target: str, expected_module: st
                 """
             ),
         ],
-        check=True,
+        stderr=subprocess.PIPE if expected_error else None,
+        check=expected_error is None,
     )
+    if expected_error:
+        assert expected_error in result.stderr.decode()
 
 
 def test_pants_v1_load(pants_v1_repo: PantsRepo) -> None:
@@ -221,8 +230,23 @@ def test_pants_v1_load(pants_v1_repo: PantsRepo) -> None:
     )
     (build_root / "requirements.txt").write_text("pkginfo==1.7.0")
 
+    expected_error = None
+    if sys.version_info[:2] >= (3, 10):
+        # Pants v1 uses older Pex and creates PEX files that we cannot inspect with PEX_TOOLS using
+        # Python 3.10 or newer. This should be fine in practice since Pants v1 can't in general work
+        # with Python 3.10 due to using older Pex; so using Python 3.10 or newer in a notebook
+        # that's meant to access Pants v1 artifacts should not be expected to work either.
+        expected_error = dedent(
+            """\
+            No interpreter compatible with the requested constraints was found:
+              Version matches >=2.7,<3.10,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*
+            """
+        )
     check_pants_load(
-        pants_repo=pants_v1_repo, pex_target="//:pkginfo-bin", expected_module="pkginfo"
+        pants_repo=pants_v1_repo,
+        pex_target="//:pkginfo-bin",
+        expected_module="pkginfo",
+        expected_error=expected_error,
     )
 
 

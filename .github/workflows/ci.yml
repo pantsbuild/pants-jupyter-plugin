@@ -16,10 +16,10 @@ jobs:
       matrix:
         include:
           - check-name: Formatting
-            python-version: 3.9
-            tox-env: fmt
+            python-version: 3.10
+            tox-env: lint
           - check-name: Types
-            python-version: 3.9
+            python-version: 3.10
             tox-env: typecheck
     steps:
       - name: Checkout

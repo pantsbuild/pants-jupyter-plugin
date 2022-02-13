@@ -3,7 +3,7 @@
 
 """Jupyter support for Pants projects and PEX files."""  # N.B.: Flit uses this as our distribution description.
 
-__version__ = "0.0.4"  # N.B.: Flit uses this as our distribution version.
+__version__ = "0.0.5"  # N.B.: Flit uses this as our distribution version.
 
 from IPython import InteractiveShell
 

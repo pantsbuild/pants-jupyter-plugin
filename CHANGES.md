@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.0.6
+
++ [cdc8973](https://github.com/pantsbuild/pants-jupyter-plugin/commit/cdc8973) Don't fail on venv creation collisions. (#42)
+
 ## 0.0.5
 
 + [0ec088e](https://github.com/pantsbuild/pants-jupyter-plugin/commit/0ec088e) Bump Python version to allow Python 3.10 (#39)
@@ -20,4 +24,5 @@
 ## 0.0.1
 
 Initial public release.
+
 

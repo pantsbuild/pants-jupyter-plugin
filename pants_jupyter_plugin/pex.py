@@ -76,7 +76,7 @@ class PexManager:
                 + compatible_interpreters_list
             )
 
-    DEFAULT_VERSION = "2.1.56"
+    DEFAULT_VERSION = "2.1.66"
     FALLBACK_VERSION = "2.1.32"
 
     pex: Pex
@@ -169,7 +169,10 @@ class PexManager:
                         compatible_interpreters=compatible_interpreters,
                     )
                 venv_tmp = venv.parent / f"{venv.name}.{uuid4().hex}"
-                run_pex_tool(args=["venv", str(venv_tmp)])
+                # N.B.: Some important libraries out there provide colliding console scripts which
+                # we don't use here anyhow; so we allow collisions which just emits warnings but
+                # does not fail the venv creation.
+                run_pex_tool(args=["venv", "--collisions-ok", str(venv_tmp)])
                 venv_tmp.rename(venv)
 
         python = venv / "bin" / "python"

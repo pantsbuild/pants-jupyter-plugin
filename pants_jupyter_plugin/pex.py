@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from pants_jupyter_plugin import cache, env
 from pants_jupyter_plugin.download import DownloadError, download_once
+from pants_jupyter_plugin.env import EnvManager
 from pants_jupyter_plugin.lock import creation_lock
 
 _CACHE = cache.DIR / "pex"
@@ -81,7 +82,7 @@ class PexManager:
 
     pex: Pex
     _fallback_pex: Optional[Pex] = None
-    mounted: List[Path] = field(default_factory=list, hash=False)
+    _env_mgr: EnvManager = EnvManager()
 
     @classmethod
     def load(cls) -> "PexManager":
@@ -94,23 +95,8 @@ class PexManager:
         return self._fallback_pex
 
     def unmount(self) -> Iterator[Path]:
-        """Scrubs sys.path and sys.modules of any contents from previously mounted PEXes.
-
-        WARNING: This will irreversibly mutate sys.path and sys.modules each time it's called.
-        """
-        while self.mounted:
-            pex_sys_path_entry = self.mounted.pop()
-            sys.path[:] = [
-                entry
-                for entry in sys.path
-                if entry and os.path.exists(entry) and not pex_sys_path_entry.samefile(entry)
-            ]
-            for name, module in list(sys.modules.items()):
-                module_path = getattr(module, "__file__", None)
-                if module_path is not None:
-                    if pex_sys_path_entry in Path(module_path).parents:
-                        del sys.modules[name]
-            yield pex_sys_path_entry
+        for path_entry in self._env_mgr.unmount():
+            yield path_entry        
 
     def mount(self, pex_to_mount: Path) -> Iterator[Path]:
         """Mounts the contents of the given PEX on the sys.path for importing."""
@@ -185,8 +171,6 @@ class PexManager:
             stdout=subprocess.PIPE,
             check=True,
         )
-        for path in result.stdout.decode().splitlines():
-            path_entry = Path(path)
-            sys.path.append(path)
-            self.mounted.append(path_entry)
+
+        for path_entry in self._env_mgr.mount(Path(p) for p in result.stdout.decode().splitlines()):
             yield path_entry

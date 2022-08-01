@@ -96,7 +96,7 @@ class PexManager:
 
     def unmount(self) -> Iterator[Path]:
         for path_entry in self._env_mgr.unmount():
-            yield path_entry        
+            yield path_entry
 
     def mount(self, pex_to_mount: Path) -> Iterator[Path]:
         """Mounts the contents of the given PEX on the sys.path for importing."""

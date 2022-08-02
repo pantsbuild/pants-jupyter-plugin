@@ -3,10 +3,9 @@
 
 import os
 import sys
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator, List, Mapping, Union
+from typing import Any, Iterable, Iterator, List, Mapping, Union
 
 
 def create(**env_vars: Any) -> Mapping[str, str]:

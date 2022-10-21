@@ -50,6 +50,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      # The Pants v1 tests require Python 3.6; so ensure we have it.
+      - name: Setup Python 3.6
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.6"
       - name: Setup Python ${{ join(matrix.python-version, '.') }}
         uses: actions/setup-python@v4
         with:

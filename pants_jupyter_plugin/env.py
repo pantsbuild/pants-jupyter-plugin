@@ -52,6 +52,6 @@ class EnvManager:
     def mount(self, path_parts: Iterable[Path]) -> Iterator[Path]:
         """Mounts an iterable of path parts to sys.path."""
         for path_entry in path_parts:
-            sys.path.append(str(path_entry))
-            self.mounted.append(path_entry)
+            sys.path.insert(0, str(path_entry))
+            self.mounted.insert(0, path_entry)
             yield path_entry
